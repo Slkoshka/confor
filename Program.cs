@@ -2,104 +2,8 @@
 using Pastel;
 using System.Net;
 using System.Net.Sockets;
-using System.Text;
 
-Console.OutputEncoding = Encoding.UTF8;
-
-// Required for Native AOT to work
-[System.Diagnostics.CodeAnalysis.DynamicDependency(System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.All, typeof(Options))]
-static async Task ConnectionHandler(int connectionId, TcpClient tcp, IPEndPoint destAddress, int bufferSize, TimeSpan timeout, CancellationToken cancellationToken)
-{
-    try
-    {
-        Log.Info($"[#{connectionId}] Accepted connection from {tcp.Client.RemoteEndPoint}");
-
-        using var dest = new TcpClient();
-        dest.ReceiveBufferSize = tcp.ReceiveBufferSize = bufferSize;
-        dest.SendBufferSize = tcp.SendBufferSize = bufferSize;
-
-        Log.Debug($"[#{connectionId}] Connecting to {destAddress}...");
-        await dest.ConnectAsync(destAddress, cancellationToken);
-        Log.Debug($"[#{connectionId}] Connected!");
-
-        try
-        {
-            static async Task Sender(string logPrefix, int bufferSize, TimeSpan timeout, Socket src, Socket dest, CancellationToken cancellationToken)
-            {
-                var buffer = new byte[bufferSize];
-
-                try
-                {
-                    while (!cancellationToken.IsCancellationRequested)
-                    {
-                        using var timeoutCts = new CancellationTokenSource(timeout);
-                        using var combinedCancellation = CancellationTokenSource.CreateLinkedTokenSource(timeoutCts.Token, cancellationToken);
-
-                        var read = await src.ReceiveAsync(buffer.AsMemory(0, 1), combinedCancellation.Token);
-                        if (read > 0 && src.Available > 0)
-                        {
-                            read += await src.ReceiveAsync(buffer.AsMemory(1, Math.Min(bufferSize - 1, src.Available)), combinedCancellation.Token);
-                        }
-
-                        if (read == 0)
-                        {
-                            break;
-                        }
-
-                        Log.Debug($"{logPrefix}Received {read} bytes");
-                        if (read > 0)
-                        {
-                            var totalSent = 0;
-                            var sendFailed = false;
-                            while (totalSent < read)
-                            {
-                                timeoutCts.CancelAfter(timeout);
-                                var sent = await dest.SendAsync(buffer.AsMemory(0, read), combinedCancellation.Token);
-                                Log.Debug($"{logPrefix}Sent {sent} bytes");
-
-                                if (sent == 0)
-                                {
-                                    sendFailed = true;
-                                    break;
-                                }
-
-                                totalSent += sent;
-                            }
-                            if (sendFailed)
-                            {
-                                break;
-                            }
-                        }
-                    }
-                }
-                catch
-                {
-                    src.Close();
-                    throw;
-                }
-            }
-
-            await Task.WhenAll(
-                Sender($"[#{connectionId} S->D] ", bufferSize, timeout, tcp.Client, dest.Client, cancellationToken),
-                Sender($"[#{connectionId} D->S] ", bufferSize, timeout, dest.Client, tcp.Client, cancellationToken));
-        }
-        finally
-        {
-            dest.Close();
-        }
-    }
-    catch (OperationCanceledException) { }
-    catch (Exception ex)
-    {
-        Log.Warning($"[#{connectionId}] Error in connection handler:\n{ex}");
-    }
-    finally
-    {
-        tcp.Close();
-        tcp.Dispose();
-        Log.Info($"[#{connectionId}] Closed connection");
-    }
-}
+Console.OutputEncoding = System.Text.Encoding.UTF8;
 
 await Parser.Default.ParseArguments<Options>(args)
     .WithParsedAsync(async o =>
@@ -154,12 +58,13 @@ await Parser.Default.ParseArguments<Options>(args)
         Log.Info("Press Ctrl+C to exit");
         Console.CancelKeyPress += OnCtrlC;
 
+        var proxy = new Proxy(destAddress, o.BufferSize, TimeSpan.FromSeconds(o.Timeout));
+
         try
         {
-            var connectionId = 1;
             while (!cancellation.IsCancellationRequested)
             {
-                _ = ConnectionHandler(connectionId++, await listener.AcceptTcpClientAsync(cancellation.Token), destAddress, o.BufferSize, TimeSpan.FromSeconds(o.Timeout), cancellation.Token);
+                _ = proxy.StartAsync(await listener.AcceptTcpClientAsync(cancellation.Token), cancellation.Token);
             }
         }
         catch (OperationCanceledException) { }
