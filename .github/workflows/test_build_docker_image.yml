@@ -1,0 +1,21 @@
+name: Test Docker image build
+
+on:
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build_image:
+    name: Test if we can build a Docker image
+    if: "! contains(toJSON(github.event.commits.*.message), '[skip-ci]')"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the repo
+        uses: actions/checkout@v2
+
+      - name: Build Docker image
+        uses: docker/build-push-action@v1
+        with:
+          push: false
+          repository: slkoshka/confor
+          tags: latest
