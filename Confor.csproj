@@ -6,7 +6,6 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <AssemblyName>confor</AssemblyName>
-    <PublishAot>true</PublishAot>
     
     <Authors>Slkoshka</Authors>
     <Product>confor</Product>
@@ -16,6 +15,12 @@
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)' == 'Release'">
+    <!--
+      This is required to be inside a condition, so this project can be developed on macOS with .NET 7,
+      as Native AOT is not available for macOS until .NET 8 (which has not been released yet).
+    -->
+    <PublishAot>true</PublishAot>
+
     <StripSymbols>true</StripSymbols>
   </PropertyGroup>
 
