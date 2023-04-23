@@ -43,8 +43,8 @@ class Proxy
             Log.Info($"[#{connectionId}] Accepted connection from {tcp.Client.RemoteEndPoint}");
 
             using var dest = new TcpClient();
-            dest.ReceiveBufferSize = tcp.ReceiveBufferSize = 4096;
-            dest.SendBufferSize = tcp.SendBufferSize = 4096;
+            dest.ReceiveBufferSize = tcp.ReceiveBufferSize = 8192;
+            dest.SendBufferSize = tcp.SendBufferSize = 8192;
             tcp.Client.Blocking = dest.Client.Blocking = true;
 
             Log.Debug($"[#{connectionId}] Connecting to {_destAddress}...");

@@ -28,7 +28,7 @@ class SocketGlue
         Source = src;
         Destination = dest;
         _listener = listener;
-        _buffer = new byte[bufferSize - src.ReceiveBufferSize - dest.SendBufferSize];
+        _buffer = new byte[bufferSize];
     }
 
     public static async Task StartAsync(Socket src, Socket dest, int bufferSize, ISocketListener listener, CancellationToken cancellationToken)
