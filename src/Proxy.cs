@@ -53,13 +53,16 @@ class Proxy
 
             try
             {
-                using var cts = new CancellationTokenSource(_timeout);
+                using var cts = _timeout > TimeSpan.Zero ? new CancellationTokenSource(_timeout) : new CancellationTokenSource();
                 using var combinedCancellation = CancellationTokenSource.CreateLinkedTokenSource(cts.Token, cancellationToken);
 
                 var listener = new EventSocketListener();
                 listener.DataReceived += (sender, bytes) =>
                 {
-                    cts.CancelAfter(_timeout);
+                    if (_timeout > TimeSpan.Zero)
+                    {
+                        cts.CancelAfter(_timeout);
+                    }
                     var fromClient = (sender as SocketGlue)!.Source == tcp.Client;
                     if (fromClient)
                     {
