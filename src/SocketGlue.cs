@@ -111,7 +111,7 @@ class SocketGlue
         {
             Debug.Assert(
                 (_bufferSenderPosition + bytes <= _bufferReceiverPosition && _receiveGeneration == _sendGeneration) ||
-                (_bufferSenderPosition + bytes <= _buffer.Length && _receiveGeneration -1 == _sendGeneration));
+                (_bufferSenderPosition + bytes <= _buffer.Length && _receiveGeneration - 1 == _sendGeneration));
 
             _bufferSenderPosition += bytes;
             if (_bufferSenderPosition == _buffer.Length)
